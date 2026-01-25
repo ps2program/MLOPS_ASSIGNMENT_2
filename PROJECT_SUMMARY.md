@@ -4,6 +4,11 @@
 
 This project implements an end-to-end MLOps pipeline for binary image classification (Cats vs Dogs) for a pet adoption platform. The solution covers all five modules specified in the assignment.
 
+**Dataset:** [bhavikjikadara/dog-and-cat-classification-dataset](https://www.kaggle.com/datasets/bhavikjikadara/dog-and-cat-classification-dataset)
+- **Total Images:** 25,038 (12,519 cats, 12,519 dogs)
+- **Preprocessing:** Images resized to 224x224 RGB, split 80%/10%/10% (train/val/test)
+- **Data Augmentation:** Enabled for training set
+
 ## Module Completion Status
 
 ### ✅ M1: Model Development & Experiment Tracking (10M)

@@ -34,9 +34,8 @@ End-to-end MLOps pipeline for binary image classification (Cats vs Dogs) for a p
 
 1. **Clone and initialize:**
    ```bash
-   git clone <repo-url>
-   cd MLOps_A2
-   git init
+   git clone https://github.com/ps2program/MLOPS_ASSIGNMENT_2.git
+   cd MLOPS_ASSIGNMENT_2
    dvc init
    ```
 
@@ -46,8 +45,10 @@ End-to-end MLOps pipeline for binary image classification (Cats vs Dogs) for a p
    ```
 
 3. **Download dataset:**
-   - Download Cats and Dogs dataset from Kaggle
-   - Place in `data/raw/`
+   - Dataset: [bhavikjikadara/dog-and-cat-classification-dataset](https://www.kaggle.com/datasets/bhavikjikadara/dog-and-cat-classification-dataset)
+   - Total: 25,038 images (12,519 cats, 12,519 dogs)
+   - Use Kaggle CLI: `kaggle datasets download -d bhavikjikadara/dog-and-cat-classification-dataset -p data/raw --unzip`
+   - Or use the script: `./scripts/download_dataset.sh` (after setting up Kaggle credentials)
    - Run `dvc add data/raw/` to track with DVC
 
 4. **Train model:**
@@ -61,11 +62,23 @@ End-to-end MLOps pipeline for binary image classification (Cats vs Dogs) for a p
    docker run -p 8000:8000 cats-dogs-classifier
    ```
 
+## Dataset
+
+- **Source:** [bhavikjikadara/dog-and-cat-classification-dataset](https://www.kaggle.com/datasets/bhavikjikadara/dog-and-cat-classification-dataset)
+- **Size:** 25,038 images (12,519 cats, 12,519 dogs)
+- **Tracked with:** DVC (Data Version Control)
+- See `DATASET_INFO.md` for detailed information
+
 ## Modules
 
-- **M1**: Model Development & Experiment Tracking
-- **M2**: Model Packaging & Containerization
-- **M3**: CI Pipeline for Build, Test & Image Creation
-- **M4**: CD Pipeline & Deployment
-- **M5**: Monitoring, Logs & Final Submission
+- **M1**: Model Development & Experiment Tracking (✅ Complete)
+- **M2**: Model Packaging & Containerization (✅ Complete)
+- **M3**: CI Pipeline for Build, Test & Image Creation (✅ Complete)
+- **M4**: CD Pipeline & Deployment (✅ Complete)
+- **M5**: Monitoring, Logs & Final Submission (✅ Complete)
+
+## Repository
+
+- **GitHub:** https://github.com/ps2program/MLOPS_ASSIGNMENT_2
+- **Status:** All modules implemented and tested
 

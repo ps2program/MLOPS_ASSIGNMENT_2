@@ -40,24 +40,32 @@ pip install -r requirements.txt
 
 ### Option 1: Using Kaggle CLI (Recommended)
 
+**Dataset:** [bhavikjikadara/dog-and-cat-classification-dataset](https://www.kaggle.com/datasets/bhavikjikadara/dog-and-cat-classification-dataset)
+- **Total Images:** 25,038 (12,519 cats, 12,519 dogs)
+- **Size:** ~775MB
+
 1. Download your Kaggle API credentials from https://www.kaggle.com/settings
 2. Place `kaggle.json` in `~/.kaggle/`
 3. Run the download script:
 
 ```bash
-./scripts/download_dataset.sh
+# Update the script to use the correct dataset, or run directly:
+kaggle datasets download -d bhavikjikadara/dog-and-cat-classification-dataset -p data/raw --unzip
+
+# Organize the dataset (if needed)
+# The script will handle organization automatically
 ```
 
 ### Option 2: Manual Download
 
-1. Download the Cats vs Dogs dataset from Kaggle
+1. Download from: https://www.kaggle.com/datasets/bhavikjikadara/dog-and-cat-classification-dataset
 2. Extract and organize into:
    ```
    data/raw/
      cats/
-       *.jpg
+       *.jpg  (12,519 images)
      dogs/
-       *.jpg
+       *.jpg  (12,519 images)
    ```
 
 ### Track Data with DVC

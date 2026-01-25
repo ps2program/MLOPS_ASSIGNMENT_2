@@ -34,26 +34,40 @@ dvc init
 
 ## Step 2: Download Dataset (1 minute)
 
-**Option A: Using script (requires Kaggle API)**
+**Dataset:** [bhavikjikadara/dog-and-cat-classification-dataset](https://www.kaggle.com/datasets/bhavikjikadara/dog-and-cat-classification-dataset)
+- 25,038 images (12,519 cats, 12,519 dogs)
+
+**Option A: Using Kaggle CLI (Recommended)**
 ```bash
 # Place kaggle.json in ~/.kaggle/
-./scripts/download_dataset.sh
+kaggle datasets download -d bhavikjikadara/dog-and-cat-classification-dataset -p data/raw --unzip
+
+# Organize images (if needed)
+find data/raw/PetImages/Cat -type f -name "*.jpg" -exec mv {} data/raw/cats/ \;
+find data/raw/PetImages/Dog -type f -name "*.jpg" -exec mv {} data/raw/dogs/ \;
+
+# Track with DVC
 dvc add data/raw
 ```
 
-**Option B: Manual**
-1. Download from Kaggle: https://www.kaggle.com/datasets/salader/dogs-vs-cats
+**Option B: Manual Download**
+1. Download from: https://www.kaggle.com/datasets/bhavikjikadara/dog-and-cat-classification-dataset
 2. Extract to `data/raw/` with `cats/` and `dogs/` subdirectories
 3. Run: `dvc add data/raw`
 
-## Step 3: Train Model (1 minute)
+## Step 3: Train Model (30-60 minutes for full dataset)
 
 ```bash
 # Quick training (few epochs for testing)
-python src/training/train.py --num_epochs 5 --batch_size 16
+PYTHONPATH=. python src/training/train.py --num_epochs 5 --batch_size 16
 
-# Full training
-python src/training/train.py
+# Full training with full dataset (recommended)
+PYTHONPATH=. python src/training/train.py \
+    --raw_data_dir data/raw \
+    --processed_data_dir data/processed \
+    --model_save_dir models \
+    --num_epochs 10 \
+    --batch_size 32
 ```
 
 ## Step 4: Test Locally (30 seconds)
