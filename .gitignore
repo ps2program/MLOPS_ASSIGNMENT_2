@@ -30,6 +30,7 @@ wheels/
 # MLflow
 mlruns/
 mlartifacts/
+mlflow.db
 
 # DVC
 .dvc/cache
