@@ -52,36 +52,31 @@ def test_preprocess_image_invalid():
         preprocess_image(invalid_bytes)
 
 
-@patch('src.inference.app.model')
 @patch('src.inference.app.device', torch.device('cpu'))
-def test_predict(mock_model_global, mock_model, sample_image_bytes):
+@patch('src.inference.app.model')
+def test_predict(mock_model_global, sample_image_bytes):
     """Test prediction function."""
-    # Setup mock model
+    # Setup mock model to return logits for 2 classes
     mock_model_global.eval = Mock()
-    mock_model_global.return_value = torch.tensor([[2.0, 1.0]])  # Mock output
-    
+    mock_model_global.return_value = torch.tensor([[2.0, 1.0]])
+
+    # Create a mock that supports .to() on the tensor
+    mock_model_global.to = Mock(return_value=mock_model_global)
+
     # Preprocess image
     image_tensor = preprocess_image(sample_image_bytes)
-    
-    # Mock the model to return expected output
-    with patch('torch.nn.functional.softmax') as mock_softmax:
-        mock_softmax.return_value = torch.tensor([[0.7, 0.3]])
-        
-        # This will fail if model is None, so we need to set it
-        from src.inference.app import model, device
-        if model is None:
-            pytest.skip("Model not loaded - requires trained model")
-        
-        result = predict(image_tensor)
-        
-        # Check result structure
-        assert 'prediction' in result
-        assert 'class_probabilities' in result
-        assert 'confidence' in result
-        assert result['prediction'] in ['cat', 'dog']
-        assert 'cat' in result['class_probabilities']
-        assert 'dog' in result['class_probabilities']
-        assert 0 <= result['confidence'] <= 1
+
+    # Run prediction
+    result = predict(image_tensor)
+
+    # Check result structure
+    assert 'prediction' in result
+    assert 'class_probabilities' in result
+    assert 'confidence' in result
+    assert result['prediction'] in ['cat', 'dog']
+    assert 'cat' in result['class_probabilities']
+    assert 'dog' in result['class_probabilities']
+    assert 0 <= result['confidence'] <= 1
 
 
 def test_model_creation():

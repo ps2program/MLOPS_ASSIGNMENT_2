@@ -10,7 +10,7 @@ services:
       - MODEL_PATH=/app/models/best_model.pt
       - PYTHONUNBUFFERED=1
     volumes:
-      - ../models:/app/models:ro
+      - ../../models:/app/models:ro
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
       interval: 30s

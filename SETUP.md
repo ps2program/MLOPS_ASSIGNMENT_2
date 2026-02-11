@@ -4,25 +4,20 @@ This guide will help you set up and run the complete MLOps pipeline for Cats vs 
 
 ## Prerequisites
 
-- Python 3.10+
-- Docker and Docker Compose (for containerization)
+- Python 3.10+ (tested with 3.10 and 3.13)
+- Docker Desktop (for containerization)
 - Git (for version control)
-- DVC (for data versioning)
-- Kubernetes cluster (optional, for K8s deployment)
+- [kind](https://kind.sigs.k8s.io/) (for local Kubernetes deployment)
 - Kaggle account (for dataset download)
 
 ## Step 1: Clone and Initialize Repository
 
 ```bash
 # Clone the repository
-git clone <your-repo-url>
-cd MLOps_A2
+git clone https://github.com/ps2program/MLOPS_ASSIGNMENT_2.git
+cd MLOPS_ASSIGNMENT_2
 
-# Initialize Git (if not already initialized)
-git init
-
-# Initialize DVC
-dvc init
+# DVC is already initialized in this repo
 ```
 
 ## Step 2: Install Dependencies
@@ -81,12 +76,14 @@ git commit -m "Add dataset with DVC"
 
 ## Step 4: Train the Model
 
+> **Important:** You must set `PYTHONPATH` to the project root so that `src` is importable.
+
 ```bash
 # Train with default parameters
-python src/training/train.py
+PYTHONPATH=. python src/training/train.py
 
 # Or with custom parameters
-python src/training/train.py \
+PYTHONPATH=. python src/training/train.py \
     --raw_data_dir data/raw \
     --processed_data_dir data/processed \
     --model_save_dir models \
@@ -96,26 +93,41 @@ python src/training/train.py \
 ```
 
 The training script will:
-- Preprocess images (resize to 224x224, split train/val/test)
-- Train a CNN model
-- Track experiments with MLflow
+- Preprocess images (resize to 224x224, split 80/10/10 train/val/test)
+- Apply data augmentation (random horizontal flip, rotation, color jitter)
+- Train a CNN model with batch normalization and dropout
+- Track experiments with MLflow (parameters, metrics, confusion matrix)
 - Save the best model to `models/best_model.pt`
 
-## Step 5: Test the Model Locally
+### View Training Results in MLflow
 
 ```bash
-# Run unit tests
-pytest tests/ -v
+mlflow ui --port 5000
+# Open http://localhost:5000
+```
 
-# Run with coverage
-pytest tests/ -v --cov=src --cov-report=html
+Click the **cats_dogs_classification** experiment, then click the run to see:
+- **Parameters:** epochs, batch_size, learning_rate
+- **Metrics:** train/val accuracy, loss, precision, recall, F1
+- **Artifacts:** confusion_matrix.png, saved model
+
+## Step 5: Run Tests
+
+```bash
+# Run unit tests (14 tests)
+PYTHONPATH=. pytest tests/ -v
+
+# Run with coverage report
+PYTHONPATH=. pytest tests/ -v --cov=src --cov-report=html
 ```
 
 ## Step 6: Build Docker Image
 
+The model (`models/best_model.pt`) is baked into the image during build.
+
 ```bash
-# Build the image
-docker build -t cats-dogs-classifier:latest .
+# Build the image (use --load if Docker sign-in enforcement is enabled)
+docker build --load -t cats-dogs-classifier:latest .
 
 # Verify the image
 docker images | grep cats-dogs-classifier
@@ -124,14 +136,13 @@ docker images | grep cats-dogs-classifier
 ## Step 7: Run Inference Service Locally
 
 ```bash
-# Run with Docker
-docker run -p 8000:8000 \
-    -v $(pwd)/models:/app/models:ro \
-    cats-dogs-classifier:latest
+# Run with Docker (model is already inside the image)
+docker run -d --name cats-dogs-api -p 8000:8000 cats-dogs-classifier:latest
 
-# Or with Docker Compose
+# Or with Docker Compose (includes Prometheus)
 cd deployment/docker-compose
-docker-compose up -d
+docker compose up -d
+cd ../..
 ```
 
 ## Step 8: Test the API
@@ -139,16 +150,22 @@ docker-compose up -d
 ```bash
 # Health check
 curl http://localhost:8000/health
+# Expected: {"status":"healthy","model_loaded":true}
 
-# Metrics
-curl http://localhost:8000/metrics
+# Prediction with a cat image
+curl -X POST -F "file=@data/raw/cats/1.jpg" http://localhost:8000/predict
 
-# Prediction (requires an image file)
-curl -X POST http://localhost:8000/predict \
-    -F "file=@path/to/image.jpg"
+# Prediction with a dog image
+curl -X POST -F "file=@data/raw/dogs/1.jpg" http://localhost:8000/predict
+
+# Prometheus metrics
+curl http://localhost:8000/metrics | grep inference
 
 # Run smoke tests
-./scripts/smoke_tests.sh http://localhost:8000
+bash scripts/smoke_tests.sh http://localhost:8000
+
+# Clean up
+docker stop cats-dogs-api && docker rm cats-dogs-api
 ```
 
 ## Step 9: CI/CD Setup
@@ -158,103 +175,184 @@ curl -X POST http://localhost:8000/predict \
 The CI/CD pipelines are already configured in `.github/workflows/`:
 
 - **CI Pipeline** (`.github/workflows/ci.yml`):
-  - Runs on push/PR to main/develop
-  - Runs unit tests
-  - Builds and pushes Docker image to GitHub Container Registry
+  - Triggers on push/PR to main/develop
+  - Runs unit tests with pytest
+  - Builds Docker image
+  - Pushes to GitHub Container Registry
 
 - **CD Pipeline** (`.github/workflows/cd.yml`):
-  - Runs on push to main
-  - Deploys to Kubernetes or Docker Compose
+  - Triggers on push to main
+  - Provisions a kind cluster
+  - Builds and loads the Docker image into kind
+  - Deploys to Kubernetes via `kubectl apply`
   - Runs smoke tests
+  - Cleans up the cluster
 
-### Configure GitHub Secrets (if needed)
+No additional secrets are required -- the CD pipeline uses kind for local-style deployment within the GitHub Actions runner.
 
-For private registries or custom deployments, you may need to set up:
-- `DOCKER_USERNAME`
-- `DOCKER_PASSWORD`
-- Kubernetes credentials
-
-## Step 10: Deploy
+## Step 10: Deploy to Local Kubernetes (kind)
 
 ### Option 1: Docker Compose (Local)
 
 ```bash
 cd deployment/docker-compose
-docker-compose up -d
+docker compose up -d
 
 # Check status
-docker-compose ps
+docker compose ps
 
 # View logs
-docker-compose logs -f
+docker compose logs -f classifier-api
+
+# Tear down
+docker compose down
+cd ../..
 ```
 
-### Option 2: Kubernetes
+### Option 2: Kubernetes with kind (Recommended)
 
 ```bash
-# Apply Kubernetes manifests
+# Install kind (if not already installed)
+# macOS:
+brew install kind
+# Linux:
+curl -Lo ./kind https://kind.sigs.k8s.io/dl/v0.20.0/kind-linux-amd64
+chmod +x ./kind && sudo mv ./kind /usr/local/bin/kind
+
+# Create a cluster
+kind create cluster --name mlops-cluster --wait 60s
+
+# Build and load the Docker image into kind
+docker build --load -t cats-dogs-classifier:latest .
+kind load docker-image cats-dogs-classifier:latest --name mlops-cluster
+
+# Deploy
 kubectl apply -f deployment/kubernetes/deployment.yaml
 
-# Check deployment status
-kubectl get deployments
-kubectl get services
-kubectl get pods
+# Wait for pods to be ready
+kubectl rollout status deployment/cats-dogs-classifier --timeout=120s
 
-# Port forward for local access
-kubectl port-forward service/cats-dogs-classifier-service 8000:80
+# Check status (expect 2/2 pods Running)
+kubectl get pods,svc,deployment
+
+# Port-forward to access the service
+kubectl port-forward svc/cats-dogs-classifier-service 8080:80 &
+
+# Test health
+curl http://localhost:8080/health
+
+# Test prediction
+curl -X POST -F "file=@data/raw/cats/1.jpg" http://localhost:8080/predict
+
+# Run smoke tests
+bash scripts/smoke_tests.sh http://localhost:8080
 ```
 
-## Monitoring
+### Tear Down Kubernetes
 
-### View Metrics
+```bash
+# Delete the cluster when done
+kind delete cluster --name mlops-cluster
+```
 
-- Prometheus: http://localhost:9090 (if using Docker Compose)
-- API Metrics: http://localhost:8000/metrics
+## Step 11: Monitoring & Evaluation
 
-### View Logs
+### Prometheus Metrics
+
+The API exposes Prometheus-compatible metrics at `/metrics`:
+
+```bash
+# View key metrics
+curl http://localhost:8080/metrics | grep -E "(inference_requests_total |inference_request_duration|predictions_total)"
+```
+
+Key metrics:
+| Metric | Description |
+|--------|-------------|
+| `inference_requests_total` | Total number of inference requests |
+| `inference_request_duration_seconds` | Latency histogram (p50, p90, p99) |
+| `predictions_total{class="cat/dog"}` | Prediction count by class |
+
+If using Docker Compose, Prometheus UI is available at `http://localhost:9090`.
+
+### Application Logs
 
 ```bash
 # Docker
-docker logs cats-dogs-classifier
+docker logs cats-dogs-api
 
 # Docker Compose
-docker-compose logs -f classifier-api
+docker compose logs -f classifier-api
 
 # Kubernetes
-kubectl logs -f deployment/cats-dogs-classifier
+kubectl logs deployment/cats-dogs-classifier --tail=20
 ```
 
-## MLflow UI
+Logs include structured prediction entries with confidence and latency:
+
+```
+2026-02-11 08:25:20 - src.inference.app - INFO - Prediction: dog, Confidence: 0.9895, Latency: 0.7850s
+```
+
+### Post-Deployment Model Evaluation
+
+Run the evaluation script to assess model performance on real images:
+
+```bash
+python scripts/evaluate_deployed_model.py --url http://localhost:8080 --num-samples 20
+```
+
+This sends images with known labels (from `data/raw/cats/` and `data/raw/dogs/`) to the deployed API and reports accuracy, precision, recall, F1 score, and a confusion matrix. If real images are not available, it falls back to simulated test images.
+
+### MLflow UI
 
 View experiment tracking:
 
 ```bash
-mlflow ui
-
-# Access at http://localhost:5000
+mlflow ui --port 5000
+# Open http://localhost:5000
 ```
 
 ## Troubleshooting
 
+### `ModuleNotFoundError: No module named 'src'`
+
+You need `PYTHONPATH` set to the project root:
+
+```bash
+PYTHONPATH=. python src/training/train.py
+PYTHONPATH=. pytest tests/ -v
+```
+
 ### Model not found error
 
 Ensure the model file exists:
+
 ```bash
 ls -la models/best_model.pt
 ```
 
 If missing, train the model first (Step 4).
 
+### Docker sign-in enforcement error
+
+If `docker build` fails with a sign-in error, use the `--load` flag:
+
+```bash
+docker build --load -t cats-dogs-classifier:latest .
+```
+
 ### Port already in use
 
-Change the port in:
+Change the host port:
 - Docker: `-p 8001:8000`
 - Docker Compose: Update `ports` in `docker-compose.yml`
-- Kubernetes: Update `targetPort` in `deployment.yaml`
+- Kubernetes port-forward: `kubectl port-forward svc/cats-dogs-classifier-service 8081:80`
 
 ### DVC issues
 
 If DVC cache is corrupted:
+
 ```bash
 dvc cache dir
 # Clear and re-add data
@@ -262,14 +360,52 @@ dvc remove data/raw.dvc
 dvc add data/raw
 ```
 
-## Next Steps
+### kind cluster issues
 
-1. **Model Performance Tracking**: Collect real predictions and true labels
-2. **Model Retraining**: Set up automated retraining pipeline
-3. **A/B Testing**: Deploy multiple model versions
-4. **Alerting**: Set up alerts for model drift or errors
+```bash
+# Check if cluster exists
+kind get clusters
+
+# Delete and recreate if broken
+kind delete cluster --name mlops-cluster
+kind create cluster --name mlops-cluster --wait 60s
+```
+
+## Project Structure
+
+```
+MLOPS_ASSIGNMENT_2/
+├── src/
+│   ├── models/cnn_model.py          # CNN architecture
+│   ├── data/preprocessing.py        # Data loading, splits, augmentation
+│   ├── training/train.py            # Training with MLflow tracking
+│   └── inference/app.py             # FastAPI inference service
+├── tests/
+│   ├── test_inference.py            # Inference unit tests (7 tests)
+│   └── test_preprocessing.py        # Preprocessing unit tests (7 tests)
+├── deployment/
+│   ├── kubernetes/deployment.yaml   # K8s Deployment + Service
+│   └── docker-compose/
+│       ├── docker-compose.yml       # API + Prometheus
+│       └── prometheus.yml           # Prometheus config
+├── scripts/
+│   ├── smoke_tests.sh               # Post-deployment smoke tests
+│   └── evaluate_deployed_model.py   # Post-deployment model evaluation
+├── .github/workflows/
+│   ├── ci.yml                       # CI pipeline (test + build)
+│   └── cd.yml                       # CD pipeline (deploy to kind)
+├── data/
+│   ├── raw/                         # Cat/dog images (DVC-tracked)
+│   └── raw.dvc                      # DVC tracking file
+├── models/
+│   └── best_model.pt                # Trained model (~100MB)
+├── mlruns/                          # MLflow experiment logs
+├── Dockerfile                       # Multi-stage Docker build
+├── requirements.txt                 # Python dependencies
+└── .dvc/config                      # DVC remote config
+```
 
 ## Support
 
-For issues or questions, please refer to the main README.md or open an issue in the repository.
+For issues or questions, please open an issue in the repository.
 

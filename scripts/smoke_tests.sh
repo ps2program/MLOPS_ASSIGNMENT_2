@@ -110,8 +110,8 @@ else
     exit 1
 fi
 
-# Cleanup
-if [ -f "$TEST_IMAGE" ] && [ "$TEST_IMAGE" != "test_image.jpg" ]; then
+# Cleanup test image
+if [ -f "$TEST_IMAGE" ]; then
     rm -f "$TEST_IMAGE"
 fi
 

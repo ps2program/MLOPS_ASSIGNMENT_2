@@ -49,14 +49,6 @@ spec:
           periodSeconds: 5
           timeoutSeconds: 3
           failureThreshold: 3
-        volumeMounts:
-        - name: model-storage
-          mountPath: /app/models
-          readOnly: true
-      volumes:
-      - name: model-storage
-        persistentVolumeClaim:
-          claimName: model-pvc
 ---
 apiVersion: v1
 kind: Service
@@ -65,7 +57,7 @@ metadata:
   labels:
     app: cats-dogs-classifier
 spec:
-  type: LoadBalancer
+  type: NodePort
   ports:
   - port: 80
     targetPort: 8000
@@ -73,15 +65,3 @@ spec:
     name: http
   selector:
     app: cats-dogs-classifier
----
-apiVersion: v1
-kind: PersistentVolumeClaim
-metadata:
-  name: model-pvc
-spec:
-  accessModes:
-    - ReadOnlyMany
-  resources:
-    requests:
-      storage: 1Gi
-
