@@ -193,6 +193,9 @@ async def predict_image(file: UploadFile = File(...)):
     start_time = time.time()
     request_count.inc()
     
+    # Enhanced logging for better monitoring (M5 requirement)
+    logger.info(f"Processing prediction request - timestamp: {time.strftime('%Y-%m-%d %H:%M:%S')}")
+    
     try:
         # Validate file type
         if not file.content_type.startswith('image/'):
