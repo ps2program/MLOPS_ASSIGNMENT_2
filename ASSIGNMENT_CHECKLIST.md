@@ -293,3 +293,20 @@ All assignment requirements have been fulfilled. The project includes:
 
 **Next Step**: Create the 5-minute screen recording demonstrating the complete workflow.
 
+---
+
+## Re-verification (Latest Check — Jan 2025)
+
+Project was re-checked against the assignment requirements. Findings:
+
+| Check | Result |
+|-------|--------|
+| **Unit tests** | `pytest tests/ -v`: **13 passed**, 1 skipped (load model when no `models/best_model.pt`) |
+| **M1** | Git + DVC present; `src/data/preprocessing.py`, `src/models/cnn_model.py`, `src/training/train.py` with MLflow (params, metrics, artifacts) |
+| **M2** | FastAPI `src/inference/app.py`: `/health`, `/predict`, `/predict/batch`, `/metrics`; `requirements.txt`; multi-stage `Dockerfile` |
+| **M3** | `tests/test_preprocessing.py`, `tests/test_inference.py`; `.github/workflows/ci.yml` (test + Docker build) |
+| **M4** | `deployment/kubernetes/deployment.yaml`, `deployment/docker-compose/docker-compose.yml`; `.github/workflows/cd.yml`; `scripts/smoke_tests.sh` |
+| **M5** | Logging + Prometheus in app; `scripts/evaluate_deployed_model.py` (batch requests + true labels for post-deploy evaluation) |
+
+**Submission zip**: Include source, configs, and trained model. The repo has `*.pt` in `.gitignore`; for the zip, add `models/best_model.pt` and `models/confusion_matrix.png` from a local training run if not in the repo.
+

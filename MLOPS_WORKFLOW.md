@@ -212,6 +212,104 @@ User Request → API Gateway → Inference Service
                             Return Prediction
 ```
 
+---
+
+## How Teams Use These Five Phases in Industry
+
+In practice, the same five modules (M1–M5) are used continuously and together. Here’s how teams typically use them.
+
+### Who Uses What (Roles)
+
+| Phase | Primary users | What they do |
+|-------|----------------|---------------|
+| **M1** (Data + training + tracking) | Data scientists, ML engineers | Pull versioned data (DVC), run experiments, log to MLflow/W&B, register best model |
+| **M2** (Packaging + API + Docker) | ML engineers, backend engineers | Wrap model in API, write `requirements.txt`, maintain Dockerfile and image |
+| **M3** (CI) | Everyone; owned by platform/DevOps | Every push/PR runs tests and builds image; engineers fix failing tests |
+| **M4** (CD) | DevOps / platform / ML platform | Deploy new images (K8s, ECS, etc.), manage staging/prod, run smoke tests |
+| **M5** (Monitoring + logs) | ML engineers, SRE, data scientists | Watch dashboards, set alerts, run post-deploy evaluation, decide when to retrain |
+
+So: **M1–M2** are where most “model work” happens; **M3–M4** run on every change; **M5** runs all the time in production.
+
+### Day-to-Day Flow: One Change Through All Five Phases
+
+A typical cycle looks like this:
+
+1. **M1**  
+   - Data scientist/engineer gets new data or changes preprocessing/training code.  
+   - They run training, compare runs in MLflow, promote the best model (e.g. to “Production” in Model Registry).  
+   - **Output:** New model artifact + experiment record.
+
+2. **M2**  
+   - Same or another engineer ensures the inference service (FastAPI) and Docker image can load and serve this model.  
+   - They update code/config if needed (e.g. new preprocessing), rebuild image.  
+   - **Output:** New Docker image (and optionally new API version).
+
+3. **M3**  
+   - They push code (and sometimes trigger “use new model” config).  
+   - CI runs automatically: unit tests, integration tests, build image, push to registry.  
+   - **Output:** Test results + new image in registry (if tests pass).
+
+4. **M4**  
+   - On merge to main (or release tag), CD runs: deploy new image to staging, run smoke tests, then promote to production (rolling/canary).  
+   - **Output:** New version of the service running in production.
+
+5. **M5**  
+   - Logs and metrics (Prometheus, Grafana, etc.) show traffic, latency, errors.  
+   - Team runs post-deploy evaluation (batch of requests + labels, like our `evaluate_deployed_model.py`) to check accuracy.  
+   - If metrics drift or accuracy drops, they go back to **M1** (retrain or fix data) and the cycle repeats.
+
+So in industry, **all five phases are used as one loop**: M1 → M2 → M3 → M4 → M5 → (back to M1 when needed).
+
+### How Often Each Phase Runs
+
+| Phase | Frequency | Trigger |
+|-------|-----------|--------|
+| **M1** | On demand + scheduled | New data, retraining schedule, or performance drift (from M5) |
+| **M2** | When API/model interface or env changes | Code/config change in inference or dependencies |
+| **M3** | Every push / every PR | Git push, PR opened/updated |
+| **M4** | On merge to main (or release) | Merge, tag, or manual “deploy” button |
+| **M5** | Continuous | Every request is logged; metrics scraped every few seconds; evaluations run after deploy or on schedule |
+
+So **M3 and M4** are the “heartbeat” (every code change); **M1 and M2** are used when model or serving code changes; **M5** is always on in production.
+
+### Handoffs Between Phases
+
+- **M1 → M2:** “This model version is approved; please make sure the API and Docker image can serve it.”  
+  - In small teams, the same person does both. In larger orgs, a Model Registry (e.g. MLflow) holds the artifact; M2 pulls by version.
+
+- **M2 → M3:** “This image is built from this repo and this Dockerfile.”  
+  - CI (M3) builds that image on every push; no manual handoff.
+
+- **M3 → M4:** “This image passed tests; deploy it.”  
+  - CD (M4) pulls the image from the registry and deploys; often triggered automatically on merge.
+
+- **M4 → M5:** “New version is live; start monitoring it.”  
+  - Monitoring (M5) is always on; after deploy, teams watch dashboards and run evaluation scripts.
+
+- **M5 → M1:** “Accuracy dropped or drift detected; we need to retrain.”  
+  - This is the feedback loop: production signals (M5) drive the next round of data/training work (M1).
+
+### How This Compares to Our Project
+
+Our assignment has the same five modules:
+
+- **M1:** We use Git + DVC + MLflow (data versioning, training, tracking).  
+- **M2:** FastAPI + `requirements.txt` + Dockerfile (packaging and containerization).  
+- **M3:** GitHub Actions runs tests and builds the image (CI).  
+- **M4:** CD workflow + Kubernetes/Docker Compose + smoke tests (deployment).  
+- **M5:** Logging + Prometheus + `evaluate_deployed_model.py` (monitoring and post-deploy evaluation).
+
+In industry, the **ideas are the same**; the differences are usually:
+
+- **Scale:** More data, more experiments, more services, more frequent deploys.  
+- **Tooling:** Dedicated model registries, feature stores, orchestration (Airflow/Prefect), managed K8s.  
+- **Governance:** Approval steps (e.g. “promote to production” in registry), compliance, access control.  
+- **Automation:** Scheduled retraining, auto-deploy on metric thresholds, canary releases.
+
+So: **teams use MLOps by running M1–M2 when the model or API changes, M3–M4 on every code change, and M5 all the time—with M5 feeding back into M1 for retraining.** Our five modules map directly to this loop.
+
+---
+
 ## Industry-Scale MLOps Architecture
 
 ### Typical Industry Setup

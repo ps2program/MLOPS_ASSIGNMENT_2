@@ -153,10 +153,10 @@ curl http://localhost:8000/health
 # Expected: {"status":"healthy","model_loaded":true}
 
 # Prediction with a cat image
-curl -X POST -F "file=@data/raw/cats/1.jpg" http://localhost:8000/predict
+curl -X POST -F "file=@data/raw/cats/cat_000.jpg" http://localhost:8000/predict
 
 # Prediction with a dog image
-curl -X POST -F "file=@data/raw/dogs/1.jpg" http://localhost:8000/predict
+curl -X POST -F "file=@data/raw/dogs/dog_000.jpg" http://localhost:8000/predict
 
 # Prometheus metrics
 curl http://localhost:8000/metrics | grep inference
@@ -242,7 +242,7 @@ kubectl port-forward svc/cats-dogs-classifier-service 8080:80 &
 curl http://localhost:8080/health
 
 # Test prediction
-curl -X POST -F "file=@data/raw/cats/1.jpg" http://localhost:8080/predict
+curl -X POST -F "file=@data/raw/cats/cat_000.jpg" http://localhost:8080/predict
 
 # Run smoke tests
 bash scripts/smoke_tests.sh http://localhost:8080
@@ -273,7 +273,52 @@ Key metrics:
 | `inference_request_duration_seconds` | Latency histogram (p50, p90, p99) |
 | `predictions_total{class="cat/dog"}` | Prediction count by class |
 
-If using Docker Compose, Prometheus UI is available at `http://localhost:9090`.
+#### Prometheus Setup
+
+**Docker Compose:**
+Prometheus UI is automatically available at `http://localhost:9090` when using Docker Compose.
+
+**Kubernetes:**
+To deploy Prometheus with Kubernetes:
+
+```bash
+# Deploy Prometheus configuration and service
+kubectl apply -f deployment/kubernetes/prometheus-config.yaml
+kubectl apply -f deployment/kubernetes/prometheus-deployment.yaml
+
+# Port-forward to access Prometheus UI
+kubectl port-forward svc/prometheus-service 9090:9090
+
+# Access Prometheus UI at http://localhost:9090
+```
+
+Prometheus will automatically scrape metrics from your classifier service pods.
+
+#### Grafana Setup
+
+**Kubernetes:**
+To deploy Grafana for visualization:
+
+```bash
+# Deploy Grafana configuration and service
+kubectl apply -f deployment/kubernetes/grafana-config.yaml
+kubectl apply -f deployment/kubernetes/grafana-datasource.yaml
+kubectl apply -f deployment/kubernetes/grafana-deployment.yaml
+
+# Port-forward to access Grafana UI
+kubectl port-forward svc/grafana-service 3000:3000
+
+# Access Grafana UI at http://localhost:3000
+# Login: admin / admin
+```
+
+Grafana is pre-configured to connect to Prometheus. You can create dashboards to visualize:
+- Total inference requests
+- Request rate over time
+- Latency percentiles (p50, p90, p99)
+- Prediction distribution by class
+
+See `deployment/kubernetes/GRAFANA_SETUP.md` for detailed instructions.
 
 ### Application Logs
 

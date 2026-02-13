@@ -1,0 +1,120 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-dashboard
+  namespace: default
+data:
+  mlops-dashboard.json: |
+    {
+      "dashboard": {
+        "title": "MLOps - Cats vs Dogs Classifier",
+        "tags": ["mlops", "inference"],
+        "timezone": "browser",
+        "schemaVersion": 27,
+        "version": 1,
+        "refresh": "10s",
+        "panels": [
+          {
+            "id": 1,
+            "title": "Total Inference Requests",
+            "type": "stat",
+            "gridPos": {"h": 8, "w": 6, "x": 0, "y": 0},
+            "targets": [
+              {
+                "expr": "inference_requests_total",
+                "refId": "A"
+              }
+            ],
+            "fieldConfig": {
+              "defaults": {
+                "color": {"mode": "palette-classic"},
+                "unit": "short"
+              }
+            }
+          },
+          {
+            "id": 2,
+            "title": "Request Rate",
+            "type": "graph",
+            "gridPos": {"h": 8, "w": 9, "x": 6, "y": 0},
+            "targets": [
+              {
+                "expr": "rate(inference_requests_total[5m])",
+                "refId": "A",
+                "legendFormat": "Requests/sec"
+              }
+            ]
+          },
+          {
+            "id": 3,
+            "title": "Inference Latency (p50, p90, p99)",
+            "type": "graph",
+            "gridPos": {"h": 8, "w": 9, "x": 15, "y": 0},
+            "targets": [
+              {
+                "expr": "histogram_quantile(0.50, inference_request_duration_seconds_bucket)",
+                "refId": "A",
+                "legendFormat": "p50"
+              },
+              {
+                "expr": "histogram_quantile(0.90, inference_request_duration_seconds_bucket)",
+                "refId": "B",
+                "legendFormat": "p90"
+              },
+              {
+                "expr": "histogram_quantile(0.99, inference_request_duration_seconds_bucket)",
+                "refId": "C",
+                "legendFormat": "p99"
+              }
+            ],
+            "yaxes": [
+              {"format": "s"},
+              {"format": "short"}
+            ],
+            "legend": {"show": true}
+          },
+          {
+            "id": 4,
+            "title": "Predictions by Class",
+            "type": "piechart",
+            "gridPos": {"h": 8, "w": 8, "x": 0, "y": 8},
+            "targets": [
+              {
+                "expr": "predictions_total",
+                "refId": "A"
+              }
+            ]
+          },
+          {
+            "id": 5,
+            "title": "Prediction Distribution",
+            "type": "bargauge",
+            "gridPos": {"h": 8, "w": 8, "x": 8, "y": 8},
+            "targets": [
+              {
+                "expr": "predictions_total",
+                "refId": "A"
+              }
+            ]
+          },
+          {
+            "id": 6,
+            "title": "Average Latency",
+            "type": "stat",
+            "gridPos": {"h": 8, "w": 8, "x": 16, "y": 8},
+            "targets": [
+              {
+                "expr": "rate(inference_request_duration_seconds_sum[5m]) / rate(inference_request_duration_seconds_count[5m])",
+                "refId": "A"
+              }
+            ],
+            "fieldConfig": {
+              "defaults": {
+                "unit": "s",
+                "decimals": 3
+              }
+            }
+          }
+        ]
+      }
+    }
