@@ -2,6 +2,9 @@
 
 End-to-end MLOps pipeline for binary image classification (Cats vs Dogs) for a pet adoption platform.
 
+# MLOPS Assignment 2  
+
+🔗 Repository: https://github.com/ps2program/MLOPS_ASSIGNMENT_2.git
 
 # 🎬 Project Demo
 
