@@ -56,6 +56,14 @@ End-to-end MLOps pipeline for binary image classification (Cats vs Dogs) for a p
    python src/training/train.py
    ```
 
+   ### Or Download Pre-trained Model Artifacts
+
+   To download the trained model files from Google Drive:
+
+   ```bash
+   chmod +x download_drive_folder.sh
+   ./download_drive_folder.sh
+
 5. **Run inference service:**
    ```bash
    docker build -t cats-dogs-classifier .
