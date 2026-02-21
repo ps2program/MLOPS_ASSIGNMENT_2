@@ -2,6 +2,19 @@
 
 End-to-end MLOps pipeline for binary image classification (Cats vs Dogs) for a pet adoption platform.
 
+<p align="center">
+  <a href="https://youtu.be/0BSL3xAujT4">
+    <img src="https://img.youtube.com/vi/0BSL3xAujT4/maxresdefault.jpg" alt="MLOps Pipeline Demo" width="100%">
+  </a>
+</p>
+
+<p align="center">
+  <a href="https://youtu.be/0BSL3xAujT4" target="_blank">
+    ▶️ **Watch the Full Demo**
+  </a>
+</p>
+
+
 ## Project Structure
 
 ```
